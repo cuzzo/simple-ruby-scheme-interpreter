@@ -305,6 +305,31 @@ describe "scheme" do
     end
   end
 
+  context "control flow" do
+    let(:program) { "((if #f + *) 3 4)" }
+    it "flows correctly" do
+      expect(subject).to eq(12)
+    end
+  end
+
+  context "type system" do
+    context "list?" do
+      context "given list" do
+        let(:program) { "(list? (quote (1 2 3)))" }
+        it "returns true" do
+          expect(subject).to eq(true)
+        end
+      end
+
+      context "given non-list" do
+        let(:program) { '(list? "TEST")' }
+        it "returns false" do
+          expect(subject).to eq(false)
+        end
+      end
+    end
+  end
+
   context "higher-order functions" do
     context "map" do
       let(:program) do

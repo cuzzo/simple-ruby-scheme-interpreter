@@ -4,26 +4,12 @@
 module S_Number; end
 class Integer; include S_Number end
 class Float; include S_Number end
-class S_Symbol < String; end
+# Symbol
 class S_String < String; end
-class S_List < Array; end
-
-# Allow true & false to respond to interger operations like +, *, >, etc.
-module S_Boolean
-  def method_missing(m, *args, &block)
-  #  to_i.send(m, *args, &block)
-  end
-end
-
-class FalseClass
-  include S_Boolean
-  #def to_i; 0 end
-end
-
-class TrueClass
-  include S_Boolean
-  #def to_i; 1 end
-end
+class S_List < Array; end # Not yet in use
+module S_Boolean; end
+class FalseClass; include S_Boolean end
+class TrueClass; include S_Boolean end
 
 
 # Class to create Scheme functions (procedures)
@@ -38,71 +24,75 @@ class Procedure
   end
 end
 
+
+# Implement standard lib
 def op(symbol)
   ->(*args) { args.reduce(symbol) }
 end
 
-MATH_BUILTINS = ["acos", "acosh", "asin", "asinh", "atan2", "atanh", "cos", "cosh", "log", "log10", "log2", "sin", "sinh", "sqrt", "tan", "tanh"]
+MATH_BUILTINS = [:acos, :acosh, :asin, :asinh, :atan2, :atanh, :cos, :cosh, :log, :log10, :log2, :sin, :sinh, :sqrt, :tan, :tanh]
   .map do |func|
-    [func, lambda { |a| Math.send(func.to_sym, a) } ]
+    [func, lambda { |a| Math.send(func, a) } ]
   end
 
 $global_env = Hash[MATH_BUILTINS].merge({
-  "+" => op(:+),
-  "-" => op(:-),
-  "*" => op(:*),
-  "/" => ->(*args) { args.map(&:to_f).reduce(:/) },
-  ">" => op(:>),
-  "<" => op(:<),
-  ">=" => op(:>=),
-  "<=" => op(:<=),
-  "abs" => op(:abs),
-  "modulo" => op(:%),
-  "remainder" => ->(a, b) { a.remainder(b) },
-  "quotient" => op(:/),
-  "=" => op(:==),
-  "equal?" => op(:==),
-  "eq?" => ->(a, b) { a.equal?(b) },
-  "not" => op(:!=),
-  "expt" => op(:**),
-  "trunc" => ->(a, b) { a.truncate(b) },
-  "min" => ->(*args) { args.min },
-  "max" => ->(*args) { args.max },
-  "length" => ->(a) { a.length },
-  "list" => ->(*args) { S_List.new(args) },
-  "list?" => ->(a) { a.is_a?(S_List) },
-  "pair?" => ->(a) { a.is_a?(S_List) && !a.empty? },
-  "null?" => ->(a) { a == [] },
-  "boolean?" => ->(a) { a.is_a?(S_Boolean) },
-  "integer?" => ->(a) { a.is_a?(Integer) },
-  "number?" => ->(a) { a.is_a?(S_Number) },
-  "string?" => ->(a) { a.is_a?(S_String) },
-  "symbol?" => ->(a) { a.is_a?(S_Symbol) },
-  "procedure?" => ->(a) { a.respond_to?(:call) },
-  "even?" => ->(a) { a.even? },
-  "odd?" => ->(a) { a.odd? },
-  "zero?" => ->(a) { a.zero? },
-  "display" => ->(a) { print(a) },
-  "apply" => ->(proc, args) { proc.call(*args) },
-  "append" => op(:+),
-  "begin" => ->(*args) { args.last },
-  "car" => ->(a) { a.first },
-  "cdr" => ->(a) { a[1..-1] },
-  "cons" => ->(a, b) { [a] + b }, # TODO: should return pair?
-  "error" => ->(a) { raise a },
+  :+ => op(:+),
+  :- => op(:-),
+  :* => op(:*),
+  :/ => ->(*args) { args.map(&:to_f).reduce(:/) },
+  :> => op(:>),
+  :< => op(:<),
+  :>= => op(:>=),
+  :<= => op(:<=),
+  :abs => op(:abs),
+  :modulo => op(:%),
+  :remainder => ->(a, b) { a.remainder(b) },
+  :quotient => op(:/),
+  "=".to_sym => op(:==),
+  :equal? => op(:==),
+  :eq? => ->(a, b) { a.equal?(b) },
+  :not => op(:!=),
+  :expt => op(:**),
+  :trunc => ->(a, b) { a.truncate(b) },
+  :min => ->(*args) { args.min },
+  :max => ->(*args) { args.max },
+  :length => ->(a) { a.length },
+  :list => ->(*args) { Array.new(args) },
+  :list? => ->(a) { a.is_a?(Array) },
+  :pair? => ->(a) { a.is_a?(Array) && !a.empty? },
+  :null? => ->(a) { a == [] },
+  :boolean? => ->(a) { a.is_a?(S_Boolean) },
+  :integer? => ->(a) { a.is_a?(Integer) },
+  :number? => ->(a) { a.is_a?(S_Number) },
+  :string? => ->(a) { a.is_a?(S_String) },
+  :symbol? => ->(a) { a.is_a?(Symbol) },
+  :procedure? => ->(a) { a.respond_to?(:call) },
+  :even? => ->(a) { a.even? },
+  :odd? => ->(a) { a.odd? },
+  :zero? => ->(a) { a.zero? },
+  :display => ->(a) { print(a) },
+  :apply => ->(proc, args) { proc.call(*args) },
+  :append => op(:+),
+  :begin => ->(*args) { args.last },
+  :car => ->(a) { a.first },
+  :cdr => ->(a) { a[1..-1] },
+  :cons => ->(a, b) { [a] + b }, # TODO: should return pair?
+  :error => ->(a) { raise a },
 
   # HIGHER-ORDER FUNCTIONS
-  "map" => ->(a, b) { b.map { |item| a.call(item) } },
-  "filter" => ->(a, b) { b.filter { |item| a.call(item) } },
-  "reduce" => ->(a, b, c) { b.reduce(c) { |acc, item| a.call(item) } },
+  :map => ->(a, b) { b.map { |item| a.call(item) } },
+  :filter => ->(a, b) { b.filter { |item| a.call(item) } },
+  :reduce => ->(a, b, c) { b.reduce(c) { |acc, item| a.call(item) } },
   # cond, promise?, set-car!, set-cdr!
 })
 
 
+# Scheme interpreter
 def parse(str)
   read_from_tokens(tokenize(str))
 end
 
+# To parse ', simply read_from_tokens until parens match?
 def tokenize(str)
   str
     .gsub('(', ' ( ')
@@ -149,31 +139,31 @@ def atom(token)
       elsif token == "#f"
         false
       else
-        S_Symbol.new(token)
+        token.to_sym
       end
     end
   end
 end
 
 def scheme_eval(x, env=$global_env)
-  if x.is_a?(S_Symbol)
+  if x.is_a?(Symbol)
     return env[x]
   elsif not x.is_a?(Array)
     return x
-  elsif x[0] == "quote"
+  elsif x[0] == :quote
     (_, exp) = x
     return exp
-  elsif x[0] == "if"
+  elsif x[0] == :if
     (_, test, conseq, alt) = x
     exp = scheme_eval(test, env) ? conseq : alt
     return scheme_eval(exp, env)
-  elsif x[0] == "define"
+  elsif x[0] == :define
     (_, rb_var, exp) = x
-    env[rb_var] = scheme_eval(exp, env)
-  elsif x[0] == "lambda"
+    env[rb_var.to_sym] = scheme_eval(exp, env)
+  elsif x[0] == :lambda
     (_, params, body) = x
     return Procedure.new(params, body, env)
-  elsif x[0] == "exit"
+  elsif x[0] == :exit
     exit
   else
     proc = scheme_eval(x.first, env)
