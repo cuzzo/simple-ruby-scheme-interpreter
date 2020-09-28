@@ -1,5 +1,32 @@
 #! /usr/bin/env ruby
 
+# Type system
+module S_Number; end
+class Integer; include S_Number end
+class Float; include S_Number end
+class S_Symbol < String; end
+class S_String < String; end
+class S_List < Array; end
+
+# Allow true & false to respond to interger operations like +, *, >, etc.
+module S_Boolean
+  def method_missing(m, *args, &block)
+  #  to_i.send(m, *args, &block)
+  end
+end
+
+class FalseClass
+  include S_Boolean
+  #def to_i; 0 end
+end
+
+class TrueClass
+  include S_Boolean
+  #def to_i; 1 end
+end
+
+
+# Class to create Scheme functions (procedures)
 class Procedure
   def initialize(params, body, env)
     @params, @body, @env = params, body, env
@@ -12,65 +39,64 @@ class Procedure
 end
 
 def op(symbol)
-  lambda { |*args| args.reduce(symbol) }
+  ->(*args) { args.reduce(symbol) }
 end
 
-$global_env = {
+MATH_BUILTINS = ["acos", "acosh", "asin", "asinh", "atan2", "atanh", "cos", "cosh", "log", "log10", "log2", "sin", "sinh", "sqrt", "tan", "tanh"]
+  .map do |func|
+    [func, lambda { |a| Math.send(func.to_sym, a) } ]
+  end
+
+$global_env = Hash[MATH_BUILTINS].merge({
   "+" => op(:+),
   "-" => op(:-),
   "*" => op(:*),
-  "/" => op(:/),
+  "/" => ->(*args) { args.map(&:to_f).reduce(:/) },
   ">" => op(:>),
   "<" => op(:<),
   ">=" => op(:>=),
   "<=" => op(:<=),
   "abs" => op(:abs),
   "modulo" => op(:%),
-  "remainder" => op(:rem),
+  "remainder" => ->(a, b) { a.remainder(b) },
+  "quotient" => op(:/),
   "=" => op(:==),
   "equal?" => op(:==),
-  "eq?" => op(:==), # TODO: not quite, identity...
+  "eq?" => ->(a, b) { a.equal?(b) },
   "not" => op(:!=),
-  "expt" => lambda { |a, b=Math::E| a**b },
-  "sqrt" => lambda { |a| Math.sqrt(a) },
-  "log" => lambda { |a| Math.log(a) },
-  "floor" => lambda { |a| Math.floor(a) },
-  "ceiling" => lambda { |a| Math.ceil(a) },
-  "round" => lambda { |a| Math.round(a) },
-  # trig: sin, cosh, atan...
-  # quotient, numerator, denominator, gcd, lcm, truncate, rationalize
-  "min" => lambda { |*args| args.min },
-  "max" => lambda { |*args| args.max },
-  "length" => lambda { |args| args.length },
-  "list" => lambda { |*args| args },
-  "list?" => lambda { |a| a.is_a?(Array) },
-  "null?" => lambda { |a| a == [] },
-  "number?" => lambda { |a| a.is_a?(Integer) || a.is_a?(Float) },
-  "symbol?" => lambda { |a| a.is_a?(String) },
-  "procedure?" => lambda { |a| a.respond_to?(:call) },
-  "display" => lambda { |a| puts a },
-  "apply" => lambda { |proc, args| proc.call(*args) },
-  "begin" => lambda { |*args| args.last },
-  "car" => lambda { |a| a.first },
-  "cdr" => lambda { |a| a[1..-1] },
-  "cons" => lambda { |a, b| [a] + b }
-  # map
-}
+  "expt" => op(:**),
+  "trunc" => ->(a, b) { a.truncate(b) },
+  "min" => ->(*args) { args.min },
+  "max" => ->(*args) { args.max },
+  "length" => ->(a) { a.length },
+  "list" => ->(*args) { S_List.new(args) },
+  "list?" => ->(a) { a.is_a?(S_List) },
+  "pair?" => ->(a) { a.is_a?(S_List) && !a.empty? },
+  "null?" => ->(a) { a == [] },
+  "boolean?" => ->(a) { a.is_a?(S_Boolean) },
+  "integer?" => ->(a) { a.is_a?(Integer) },
+  "number?" => ->(a) { a.is_a?(S_Number) },
+  "string?" => ->(a) { a.is_a?(S_String) },
+  "symbol?" => ->(a) { a.is_a?(S_Symbol) },
+  "procedure?" => ->(a) { a.respond_to?(:call) },
+  "even?" => ->(a) { a.even? },
+  "odd?" => ->(a) { a.odd? },
+  "zero?" => ->(a) { a.zero? },
+  "display" => ->(a) { print(a) },
+  "apply" => ->(proc, args) { proc.call(*args) },
+  "append" => op(:+),
+  "begin" => ->(*args) { args.last },
+  "car" => ->(a) { a.first },
+  "cdr" => ->(a) { a[1..-1] },
+  "cons" => ->(a, b) { [a] + b }, # TODO: should return pair?
+  "error" => ->(a) { raise a },
 
-# Allow true & false to respond to interger operations like +, *, >, etc.
-class FalseClass
-  def to_i; 0 end
-  def method_missing(m, *args, &block)
-    to_i.send(m, *args, &block)
-  end
-end
-
-class TrueClass
-  def to_i; 1 end
-  def method_missing(m, *args, &block)
-    to_i.send(m, *args, &block)
-  end
-end
+  # HIGHER-ORDER FUNCTIONS
+  "map" => ->(a, b) { b.map { |item| a.call(item) } },
+  "filter" => ->(a, b) { b.filter { |item| a.call(item) } },
+  "reduce" => ->(a, b, c) { b.reduce(c) { |acc, item| a.call(item) } },
+  # cond, promise?, set-car!, set-cdr!
+})
 
 
 def parse(str)
@@ -78,7 +104,11 @@ def parse(str)
 end
 
 def tokenize(str)
-  str.gsub('(', ' ( ').gsub(')', ' ) ').split(" ")
+  str
+    .gsub('(', ' ( ')
+    .gsub(')', ' ) ')
+    .gsub('"', ' " ')
+    .split(' ')
 end
 
 def read_from_tokens(tokens)
@@ -88,11 +118,18 @@ def read_from_tokens(tokens)
   token = tokens.shift()
   if token == '('
     sub_tokens = []
-    while tokens[0] != ')'
+    while tokens.first != ')'
       sub_tokens.append(read_from_tokens(tokens))
     end
     tokens.shift() # pop off ')'
     return sub_tokens
+  elsif token == '"'
+    sub_tokens = []
+    while tokens.first != '"'
+      sub_tokens << tokens.shift()
+    end
+    tokens.shift() # pop off '"'
+    return S_String.new(sub_tokens.join(" "))
   elsif token == ')'
     raise SyntaxError("Unexpected )")
   else
@@ -107,13 +144,19 @@ def atom(token)
     begin
       Float(token)
     rescue
-      String(token)
+      if token == "#t"
+        true
+      elsif token == "#f"
+        false
+      else
+        S_Symbol.new(token)
+      end
     end
   end
 end
 
 def scheme_eval(x, env=$global_env)
-  if x.is_a?(String)
+  if x.is_a?(S_Symbol)
     return env[x]
   elsif not x.is_a?(Array)
     return x
@@ -130,6 +173,8 @@ def scheme_eval(x, env=$global_env)
   elsif x[0] == "lambda"
     (_, params, body) = x
     return Procedure.new(params, body, env)
+  elsif x[0] == "exit"
+    exit
   else
     proc = scheme_eval(x.first, env)
     args = x[1..-1].map { |exp| scheme_eval(exp, env) }
