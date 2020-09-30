@@ -12,11 +12,6 @@ The goal of this repository is to make it as easy as possible to understand how 
 It is not a complete implementation of [The R5RS Standard](https://wiki.call-cc.org/man/4/The%20R5RS%20standard "Scheme R5R3 Standard"). 
 Notably it is missing pairs.
 
-## Known Issues
-
-* Whitespace is stripped from inside strings.
-* Space is added between parenthesis within strings.
-
 ## Acknowledgements
 
 * [Lis.py](https://norvig.com/lispy.html) - Peter Norvig's Python Lisp Interpreter

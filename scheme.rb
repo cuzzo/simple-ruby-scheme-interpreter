@@ -94,18 +94,23 @@ end
 
 def tokenize(str)
   str
-    .gsub(/\;[^"]*\n/, '') # Remove comments.
-    .gsub('(', ' ( ') # Doesn't work for strings.
-    .gsub(')', ' ) ') # Doesn't work for strings.
-    .gsub('"', ' " ')
-    .split(' ')
+    .gsub(/\;[^"]*\n/, '')
+    .gsub(/\n/, '')
+    .split(/([; ()"])/)
+    .reject(&:empty?)
 end
 
 def read_from_tokens(tokens)
   if tokens.length == 0
     raise SyntaxError("Unexpected EOF while reading")
   end
+
+  # Ignore spaces
   token = tokens.shift()
+  while token == ' '
+    token = tokens.shift()
+  end
+
   if token == '('
     sub_tokens = []
     while tokens.first != ')'
@@ -123,7 +128,7 @@ def read_from_tokens(tokens)
       sub_tokens << tokens.shift()
     end
     tokens.shift() # pop off '"'
-    return S_String.new(sub_tokens.join(" "))
+    return S_String.new(sub_tokens.join(""))
   elsif token == ')'
     raise SyntaxError("Unexpected )")
   else

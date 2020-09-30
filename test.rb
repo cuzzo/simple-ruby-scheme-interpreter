@@ -20,7 +20,7 @@ describe "scheme" do
   context "arithmetic" do
     context "addition" do
       context "integers" do
-        let(:program) { "(+ 1 2)" }
+        let(:program) { "(+ 1   2)" }
 
         it "adds integers" do
           expect(subject).to eq(3)
@@ -357,16 +357,17 @@ describe "scheme" do
     end
 
     context "extra whitespace" do
-      let(:program) { "(display \"Check     this space.\")" }
-      it "incorrectly strips whitespace within strings" do
-        expect(subject).to eq("Check this space.")
+      let(:str) { "Check     this space." }
+      let(:program) { "(display \"#{str}\")" }
+      it "does not strip whitespace within strings" do
+        expect(subject).to eq(str)
       end
     end
 
     context "nested parens" do
       let(:program) { "(display \"(+ 1 (2))\")" }
-      it "incorrectly adds space" do
-        expect(subject).to eq("( + 1 ( 2 ) )")
+      it "does not add space" do
+        expect(subject).to eq("(+ 1 (2))")
       end
     end
 
