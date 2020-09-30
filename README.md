@@ -10,7 +10,7 @@ Scheme is one of the easiest programming languages to interpret. And Ruby is one
 The goal of this repository is to make it as easy as possible to understand how a language intepreter works.
 
 It is not a complete implementation of [The R5RS Standard](https://wiki.call-cc.org/man/4/The%20R5RS%20standard "Scheme R5R3 Standard"). 
-Notably it is missing the `'` and `.` operators.
+Notably it is missing pairs.
 
 ## Acknowledgements
 

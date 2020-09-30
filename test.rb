@@ -219,11 +219,54 @@ describe "scheme" do
     end
 
     context "append" do
-      context(:append) do
-        let(:program) { "(append (quote (1 2 3)) (quote (4 5 6)) (quote (7 8 9)))" }
+      let(:program) { "(append (quote (1 2 3)) (quote (4 5 6)) (quote (7 8 9)))" }
+
+      it "appends" do
+        expect(subject).to eq([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      end
+    end
+
+    context "single quote" do
+      context "append" do
+        let(:program) { "(append '(1 2 3) '(4 5 6) '(7 8 9))" }
 
         it "appends" do
           expect(subject).to eq([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        end
+      end
+
+      context "nested quote" do
+        context "nested symbol" do
+          let(:program) { "(display '(you can 'me))" }
+
+          it "quotes" do
+            expect(subject).to eq([:you, :can, [:quote, :me]])
+          end
+        end
+
+        context "nested string" do
+          let(:program) { "(display '(you can '\"Guy Steele\"))" }
+
+          it "quotes" do
+            expect(subject).to eq([:you, :can, [:quote, "Guy Steele"]])
+          end
+        end
+
+        context "nested number" do
+          let(:program) { "(display '(you can '44))" }
+
+          it "quotes" do
+            expect(subject).to eq([:you, :can, [:quote, 44]])
+          end
+        end
+      end
+
+      context "inside double quotes" do
+        let(:str) { "I'm feeling lucky." }
+        let(:program) { "(display \"#{str}\")" }
+
+        it "does nothing" do
+          expect(subject).to eq(str)
         end
       end
     end

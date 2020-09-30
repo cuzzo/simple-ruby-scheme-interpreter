@@ -70,7 +70,7 @@ $global_env = Hash[MATH_BUILTINS].merge({
   :even? => ->(a) { a.even? },
   :odd? => ->(a) { a.odd? },
   :zero? => ->(a) { a.zero? },
-  :display => ->(a) { print(a) },
+  :display => ->(a) { print(a); a },
   :apply => ->(proc, args) { proc.call(*args) },
   :append => op(:+),
   :begin => ->(*args) { args.last },
@@ -92,7 +92,6 @@ def parse(str)
   read_from_tokens(tokenize(str))
 end
 
-# To parse ', simply read_from_tokens until parens match?
 def tokenize(str)
   str
     .gsub('(', ' ( ')
@@ -113,6 +112,10 @@ def read_from_tokens(tokens)
     end
     tokens.shift() # pop off ')'
     return sub_tokens
+  elsif token == "'"
+    [:quote, read_from_tokens(tokens)]
+  elsif token[0] == "'"
+    [:quote, atom(token[1..-1])]
   elsif token == '"'
     sub_tokens = []
     while tokens.first != '"'
@@ -166,7 +169,7 @@ def scheme_eval(x, env=$global_env)
   elsif x[0] == :exit
     exit
   else
-    proc = scheme_eval(x.first, env)
+    proc = scheme_eval(x[0], env)
     args = x[1..-1].map { |exp| scheme_eval(exp, env) }
     proc.call(*args)
   end
