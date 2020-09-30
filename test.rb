@@ -6,6 +6,15 @@ describe "scheme" do
     $global_environment = $orig_env.dup
   end
 
+  before(:all) do
+    @orig_stdout = $stdout
+    $stdout = File.open("/dev/null", "r+")
+  end
+
+  after(:all) do
+    $stdout = @orig_stdout
+  end
+
   subject { scheme_eval(parse(program)) }
 
   context "arithmetic" do
@@ -345,6 +354,38 @@ describe "scheme" do
       it "returns string variable" do
          expect(subject).to eq(false)
       end
+    end
+
+    context "extra whitespace" do
+      let(:program) { "(display \"Check     this space.\")" }
+      it "incorrectly strips whitespace within strings" do
+        expect(subject).to eq("Check this space.")
+      end
+    end
+
+    context "nested parens" do
+      let(:program) { "(display \"(+ 1 (2))\")" }
+      it "incorrectly adds space" do
+        expect(subject).to eq("( + 1 ( 2 ) )")
+      end
+    end
+
+    context "nested semi-colon" do
+      let(:program) { "(display \"; break\")" }
+      it "does not drop" do
+        expect(subject).to eq("; break")
+      end
+    end
+  end
+
+  context "comments" do
+    let(:program) do
+      """(begin ; begins a progragm
+        (+ 1 2))"""
+    end
+
+    it "executes without problem" do
+      expect(subject).to eq(3)
     end
   end
 

@@ -94,8 +94,9 @@ end
 
 def tokenize(str)
   str
-    .gsub('(', ' ( ')
-    .gsub(')', ' ) ')
+    .gsub(/\;[^"]*\n/, '') # Remove comments.
+    .gsub('(', ' ( ') # Doesn't work for strings.
+    .gsub(')', ' ) ') # Doesn't work for strings.
     .gsub('"', ' " ')
     .split(' ')
 end
