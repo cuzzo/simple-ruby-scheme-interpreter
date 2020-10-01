@@ -30,16 +30,25 @@ def op(symbol)
   ->(*args) { args.reduce(symbol) }
 end
 
+def op_default(symbol, d)
+  ->(*args) { args.reduce(symbol) || d }
+end
+
+def divide(args)
+  args = [1] + args if args.length == 1
+  args.map(&:to_f).reduce(:/)
+end
+
 MATH_BUILTINS = [:acos, :acosh, :asin, :asinh, :atan2, :atanh, :cos, :cosh, :log, :log10, :log2, :sin, :sinh, :sqrt, :tan, :tanh]
   .map do |func|
     [func, lambda { |a| Math.send(func, a) } ]
   end
 
 $global_env = Hash[MATH_BUILTINS].merge({
-  :+ => op(:+),
+  :+ => op_default(:+, 0),
   :- => op(:-),
-  :* => op(:*),
-  :/ => ->(*args) { args.map(&:to_f).reduce(:/) },
+  :* => op_default(:*, 1),
+  :/ => ->(*args) { divide(args) },
   :> => op(:>),
   :< => op(:<),
   :>= => op(:>=),
@@ -50,8 +59,9 @@ $global_env = Hash[MATH_BUILTINS].merge({
   :quotient => op(:/),
   "=".to_sym => op(:==),
   :equal? => op(:==),
+  :eqv? => ->(a, b) { a.eql?(b) },
   :eq? => ->(a, b) { a.equal?(b) },
-  :not => op(:!=),
+  :not => ->(a) { !a },
   :expt => op(:**),
   :trunc => ->(a, b) { a.truncate(b) },
   :min => ->(*args) { args.min },
@@ -69,6 +79,8 @@ $global_env = Hash[MATH_BUILTINS].merge({
   :procedure? => ->(a) { a.respond_to?(:call) },
   :even? => ->(a) { a.even? },
   :odd? => ->(a) { a.odd? },
+  :positive? => ->(a) { a > 0 },
+  :negative? => ->(a) { a < 0 },
   :zero? => ->(a) { a.zero? },
   :display => ->(a) { print(a); a },
   :apply => ->(proc, args) { proc.call(*args) },
@@ -76,7 +88,7 @@ $global_env = Hash[MATH_BUILTINS].merge({
   :begin => ->(*args) { args.last },
   :car => ->(a) { a.first },
   :cdr => ->(a) { a[1..-1] },
-  :cons => ->(a, b) { [a] + b }, # TODO: should return pair?
+  :cons => ->(a, b) { b.is_a?(Array) ? [a] + b : [a] + [b] }, # TODO: should return pair?
   :error => ->(a) { raise a },
 
   # HIGHER-ORDER FUNCTIONS
